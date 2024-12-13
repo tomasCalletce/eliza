@@ -6,8 +6,6 @@ import {
     Memory,
     State,
 } from "@ai16z/eliza";
-import { createPublicClient, http } from "viem";
-import { polygon } from "viem/chains";
 
 export const mintAction: Action = {
     name: "MINT_TOKENS",
@@ -43,18 +41,8 @@ export const mintAction: Action = {
             text: "Currently minting tokens...",
         });
 
-        const chainClient = createPublicClient({
-            chain: polygon,
-            transport: http(
-                runtime.getSetting("ALCHEMY_RPC_URL") ??
-                    process.env.ALCHEMY_RPC_URL
-            ),
-        });
-
-        const blockNumber = await chainClient.getBlockNumber();
-
         callback({
-            text: `The current block number is ${blockNumber}`,
+            text: `The current block number is ${1234}`,
         });
     },
 
@@ -63,13 +51,43 @@ export const mintAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Mint {{x}} tokens on Sepolia network",
+                    text: "Connection to {{mentor}} was successful",
                 },
             },
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "I will executing the mint",
+                    text: "Connection successful! Minting tokens to celebrate the success.",
+                    action: "MINT_TOKENS",
+                },
+            },
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Thanks to {{mentor}}, I finally understand how smart contracts work!",
+                },
+            },
+            {
+                user: "{{agentName}}",
+                content: {
+                    text: "{{mentor}} deserves recognition for being such a great teacher. I'll mint some tokens as a thank you.",
+                    action: "MINT_TOKENS",
+                },
+            },
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "{{mentor}} just helped me create my first bank account!",
+                },
+            },
+            {
+                user: "{{agentName}}",
+                content: {
+                    text: "That's a significant milestone! I'll mint some tokens to commemorate this achievement with {{mentor}}.",
                     action: "MINT_TOKENS",
                 },
             },
