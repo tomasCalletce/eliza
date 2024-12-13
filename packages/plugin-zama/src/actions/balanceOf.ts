@@ -77,7 +77,7 @@ export const balanceOfAction: Action = {
         const data = await chainClient.readContract({
             address: TOKEN_ADDRESS,
             abi: ABI,
-            functionName: "exposedBalance",
+            functionName: "balanceOf",
             args: [addresses as Address],
         });
 

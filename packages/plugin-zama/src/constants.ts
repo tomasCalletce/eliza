@@ -187,6 +187,25 @@ export const ABI = [
             {
                 indexed: true,
                 internalType: "address",
+                name: "account",
+                type: "address",
+            },
+            {
+                indexed: false,
+                internalType: "bool",
+                name: "isPublic",
+                type: "bool",
+            },
+        ],
+        name: "BalancePublicStatusChanged",
+        type: "event",
+    },
+    {
+        anonymous: false,
+        inputs: [
+            {
+                indexed: true,
+                internalType: "address",
                 name: "to",
                 type: "address",
             },
@@ -370,7 +389,7 @@ export const ABI = [
         inputs: [
             {
                 internalType: "uint256",
-                name: "",
+                name: "requestId",
                 type: "uint256",
             },
             {
@@ -462,6 +481,11 @@ export const ABI = [
     },
     {
         inputs: [
+            {
+                internalType: "address",
+                name: "to",
+                type: "address",
+            },
             {
                 internalType: "uint64",
                 name: "amount",
