@@ -7,23 +7,24 @@ import {
     State,
 } from "@ai16z/eliza";
 import { createPublicClient, http } from "viem";
-import { polygon } from "viem/chains";
+import { sepolia } from "viem/chains";
+import { ABI, TOKEN_ADDRESS } from "../constants";
 
-export const mintAction: Action = {
-    name: "MINT_TOKENS",
+export const balanceOfAction: Action = {
+    name: "BALANCE_OF",
     similes: [
-        "CREATE_TOKENS",
-        "GENERATE_TOKENS",
-        "ISSUE_TOKENS",
-        "MINT_ERC20",
-        "CREATE_ERC20",
-        "DEPLOY_ERC20",
-        "ISSUE_ERC20",
+        "CHECK_BALANCE",
+        "GET_BALANCE",
+        "VIEW_BALANCE",
+        "CHECK_TOKENS",
+        "GET_TOKEN_BALANCE",
+        "VIEW_TOKEN_BALANCE",
+        "SHOW_BALANCE",
     ],
     description:
-        "Mints new tokens on the blockchain using FHE (Fully Homomorphic Encryption)",
+        "Checks the balance of tokens on the blockchain using FHE (Fully Homomorphic Encryption)",
     validate: async (runtime: IAgentRuntime) => {
-        elizaLogger.log("Validating MINT_TOKENS action...");
+        elizaLogger.log("Validating BALANCE_OF action...");
 
         return !!(
             runtime.character.settings.secrets?.ALCHEMY_RPC_URL ||
@@ -40,37 +41,44 @@ export const mintAction: Action = {
         callback?: HandlerCallback
     ) => {
         callback({
-            text: "Currently minting tokens...",
+            text: "Checking token balance...",
         });
 
         const chainClient = createPublicClient({
-            chain: polygon,
+            batch: {
+                multicall: true,
+            },
+            chain: sepolia,
             transport: http(
                 runtime.getSetting("ALCHEMY_RPC_URL") ??
                     process.env.ALCHEMY_RPC_URL
             ),
         });
 
-        const blockNumber = await chainClient.getBlockNumber();
+        const data = await chainClient.readContract({
+            address: TOKEN_ADDRESS,
+            abi: ABI,
+            functionName: "balanceOf",
+            args: ["0x43FCE65E31720C686Abb0B62d89b4547AAb2304a"],
+        });
 
         callback({
-            text: `The current block number is ${blockNumber}`,
+            text: `Your current token balance is ${data.toString()} tokens`,
         });
     },
-
     examples: [
         [
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Mint {{x}} tokens on Sepolia network",
+                    text: "Check the balance of {{address}} on Sepolia network",
                 },
             },
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "I will executing the mint",
-                    action: "MINT_TOKENS",
+                    text: "I will check the token balance for that address",
+                    action: "BALANCE_OF",
                 },
             },
         ],
