@@ -44,6 +44,7 @@ import { solanaPlugin } from "@ai16z/plugin-solana";
 import { teePlugin, TEEMode } from "@ai16z/plugin-tee";
 import { aptosPlugin, TransferAptosToken } from "@ai16z/plugin-aptos";
 import { flowPlugin } from "@ai16z/plugin-flow";
+import { zamaPlugin } from "@ai16z/plugin-zama";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
@@ -341,7 +342,9 @@ export async function initializeClients(
     }
 
     if (clientTypes.includes("twitter")) {
-        TwitterClientInterface.enableSearch = !isFalsish(getSecret(character, "TWITTER_SEARCH_ENABLE"));
+        TwitterClientInterface.enableSearch = !isFalsish(
+            getSecret(character, "TWITTER_SEARCH_ENABLE")
+        );
         const twitterClients = await TwitterClientInterface.start(runtime);
         clients.push(twitterClients);
     }
@@ -372,10 +375,19 @@ function isFalsish(input: any): boolean {
     }
 
     // Convert input to a string if it's not null or undefined
-    const value = input == null ? '' : String(input);
+    const value = input == null ? "" : String(input);
 
     // List of common falsish string representations
-    const falsishValues = ['false', '0', 'no', 'n', 'off', 'null', 'undefined', ''];
+    const falsishValues = [
+        "false",
+        "0",
+        "no",
+        "n",
+        "off",
+        "null",
+        "undefined",
+        "",
+    ];
 
     // Check if the value (trimmed and lowercased) is in the falsish list
     return falsishValues.includes(value.trim().toLowerCase());
@@ -426,6 +438,7 @@ export async function createAgent(
         evaluators: [],
         character,
         plugins: [
+            zamaPlugin,
             bootstrapPlugin,
             getSecret(character, "CONFLUX_CORE_PRIVATE_KEY")
                 ? confluxPlugin
