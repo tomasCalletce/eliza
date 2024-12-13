@@ -54,9 +54,6 @@ export const balanceOfAction: Action = {
         });
 
         const chainClient = createPublicClient({
-            batch: {
-                multicall: true,
-            },
             chain: sepolia,
             transport: http(
                 runtime.getSetting("ALCHEMY_RPC_URL") ??
@@ -80,7 +77,7 @@ export const balanceOfAction: Action = {
         const data = await chainClient.readContract({
             address: TOKEN_ADDRESS,
             abi: ABI,
-            functionName: "balanceOf",
+            functionName: "exposedBalance",
             args: [addresses as Address],
         });
 
