@@ -1,12 +1,15 @@
 import {
     Action,
+    Content,
     elizaLogger,
+    generateText,
     HandlerCallback,
     IAgentRuntime,
     Memory,
+    ModelClass,
     State,
 } from "@ai16z/eliza";
-import { createPublicClient, http } from "viem";
+import { Address, createPublicClient, http } from "viem";
 import { sepolia } from "viem/chains";
 import { ABI, TOKEN_ADDRESS } from "../constants";
 
@@ -23,18 +26,24 @@ export const balanceOfAction: Action = {
     ],
     description:
         "Checks the balance of tokens on the blockchain using FHE (Fully Homomorphic Encryption)",
-    validate: async (runtime: IAgentRuntime) => {
+    validate: async (runtime: IAgentRuntime, message: Memory) => {
         elizaLogger.log("Validating BALANCE_OF action...");
 
-        return !!(
+        const text = (message.content as Content).text;
+        const addressRegex = /0x[a-fA-F0-9]{40}/g;
+        const hasAddress = addressRegex.test(text);
+
+        const hasRpcUrl = !!(
             runtime.character.settings.secrets?.ALCHEMY_RPC_URL ||
             process.env.ALCHEMY_RPC_URL
         );
+
+        return hasAddress && hasRpcUrl;
     },
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state?: State,
+        state: State,
         options?: {
             [key: string]: unknown;
         },
@@ -55,15 +64,28 @@ export const balanceOfAction: Action = {
             ),
         });
 
+        const context = `
+            Extract from the message the blockchain address.
+            The message is ${message.content.text}.
+            Only respond with the address, do not include anything else.
+        `;
+
+        const addresses = await generateText({
+            runtime: runtime,
+            context,
+            modelClass: ModelClass.SMALL,
+            stop: ["\n"],
+        });
+
         const data = await chainClient.readContract({
             address: TOKEN_ADDRESS,
             abi: ABI,
             functionName: "balanceOf",
-            args: ["0x43FCE65E31720C686Abb0B62d89b4547AAb2304a"],
+            args: [addresses as Address],
         });
 
         callback({
-            text: `Your current token balance is ${data.toString()} tokens`,
+            text: `Your current token balance is ${data.toString()} tokens for address ${addresses}`,
         });
     },
     examples: [
