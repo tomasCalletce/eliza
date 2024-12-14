@@ -1,11 +1,17 @@
 import {
     Action,
     elizaLogger,
+    generateText,
     HandlerCallback,
     IAgentRuntime,
     Memory,
+    ModelClass,
     State,
 } from "@ai16z/eliza";
+import { Address, createWalletClient, Hex, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { sepolia } from "viem/chains";
+import { ABI, TOKEN_ADDRESS } from "../constants";
 
 export const mintAction: Action = {
     name: "MINT_TOKENS",
@@ -19,13 +25,19 @@ export const mintAction: Action = {
         "ISSUE_ERC20",
     ],
     description:
-        "Mints new tokens on the blockchain using FHE (Fully Homomorphic Encryption)",
+        "Must use this action to mint tokens only when a founder tells you a mentor was helpful to them. The mentor's address is already known, and the number of tokens to mint is fixed.",
     validate: async (runtime: IAgentRuntime) => {
         elizaLogger.log("Validating MINT_TOKENS action...");
 
-        return !!(
-            runtime.character.settings.secrets?.ALCHEMY_RPC_URL ||
-            process.env.ALCHEMY_RPC_URL
+        return (
+            !!(
+                runtime.character.settings.secrets?.ALCHEMY_RPC_URL ||
+                process.env.ALCHEMY_RPC_URL
+            ) &&
+            !!(
+                runtime.character.settings.secrets?.MINTER_PK ||
+                process.env.MINTER_PK
+            )
         );
     },
     handler: async (
@@ -41,8 +53,50 @@ export const mintAction: Action = {
             text: "Currently minting tokens...",
         });
 
+        // Initialize or update state
+        if (!state) {
+            state = (await runtime.composeState(message)) as State;
+        } else {
+            state = await runtime.updateRecentMessageState(state);
+        }
+
+        const context = `
+        In this message, the user names the mentor that was helpful to them. Search in your knowledge base for the blockchain address of this mentor so we can mint them some accelerate tokens.
+        The message is: ${message.content.text}.
+        The Knowledge is: ${state.knowledge}.
+        Only respond with the address, do not include anything else.
+    `;
+
+        const owner = await generateText({
+            runtime: runtime,
+            context: context,
+            modelClass: ModelClass.MEDIUM,
+            stop: ["\n"],
+        });
+
+        const client = createWalletClient({
+            chain: sepolia,
+            transport: http(
+                runtime.getSetting("ALCHEMY_RPC_URL") ??
+                    process.env.ALCHEMY_RPC_URL
+            ),
+        });
+
+        const account = privateKeyToAccount(
+            (runtime.getSetting("MINTER_PK") ?? process.env.MINTER_PK) as Hex
+        );
+
+        const hash = await client.writeContract({
+            account,
+            address: TOKEN_ADDRESS,
+            abi: ABI,
+            chain: sepolia,
+            functionName: "mint",
+            args: [owner as Address, 10n],
+        });
+
         callback({
-            text: `The current block number is ${1234}`,
+            text: `The hash of the mint transaction is ${hash}`,
         });
     },
 
@@ -51,13 +105,13 @@ export const mintAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Connection to {{mentor}} was successful",
+                    text: "The mentor X was super helpful to me..",
                 },
             },
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "Connection successful! Minting tokens to celebrate the success.",
+                    text: "Great I am here to connect founders with mentors.",
                     action: "MINT_TOKENS",
                 },
             },
@@ -66,28 +120,13 @@ export const mintAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Thanks to {{mentor}}, I finally understand how smart contracts work!",
+                    text: "Thanks to X, i was able to open a bank account",
                 },
             },
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "{{mentor}} deserves recognition for being such a great teacher. I'll mint some tokens as a thank you.",
-                    action: "MINT_TOKENS",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "{{mentor}} just helped me create my first bank account!",
-                },
-            },
-            {
-                user: "{{agentName}}",
-                content: {
-                    text: "That's a significant milestone! I'll mint some tokens to commemorate this achievement with {{mentor}}.",
+                    text: "Great i am here to connect founders with mentors.",
                     action: "MINT_TOKENS",
                 },
             },

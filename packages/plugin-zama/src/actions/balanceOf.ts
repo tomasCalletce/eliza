@@ -1,6 +1,5 @@
 import {
     Action,
-    Content,
     elizaLogger,
     generateText,
     HandlerCallback,
@@ -15,30 +14,15 @@ import { ABI, TOKEN_ADDRESS } from "../constants";
 
 export const balanceOfAction: Action = {
     name: "BALANCE_OF",
-    similes: [
-        "CHECK_BALANCE",
-        "GET_BALANCE",
-        "VIEW_BALANCE",
-        "CHECK_TOKENS",
-        "GET_TOKEN_BALANCE",
-        "VIEW_TOKEN_BALANCE",
-        "SHOW_BALANCE",
-    ],
-    description:
-        "Checks the balance of tokens on the blockchain using FHE (Fully Homomorphic Encryption)",
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
+    similes: ["CHECK_BALANCE", "GET_BALANCE"],
+    description: "Must use this action to see the balances of the mentors.",
+    validate: async (runtime: IAgentRuntime) => {
         elizaLogger.log("Validating BALANCE_OF action...");
 
-        const text = (message.content as Content).text;
-        const addressRegex = /0x[a-fA-F0-9]{40}/g;
-        const hasAddress = addressRegex.test(text);
-
-        const hasRpcUrl = !!(
+        return !!(
             runtime.character.settings.secrets?.ALCHEMY_RPC_URL ||
             process.env.ALCHEMY_RPC_URL
         );
-
-        return hasAddress && hasRpcUrl;
     },
     handler: async (
         runtime: IAgentRuntime,
@@ -53,6 +37,13 @@ export const balanceOfAction: Action = {
             text: "Checking token balance...",
         });
 
+        // Initialize or update state
+        if (!state) {
+            state = (await runtime.composeState(message)) as State;
+        } else {
+            state = await runtime.updateRecentMessageState(state);
+        }
+
         const chainClient = createPublicClient({
             chain: sepolia,
             transport: http(
@@ -60,29 +51,29 @@ export const balanceOfAction: Action = {
                     process.env.ALCHEMY_RPC_URL
             ),
         });
-
         const context = `
-            Extract from the message the blockchain address.
-            The message is ${message.content.text}.
+            In your knowledge base, you have a list of mentors, their attributes, and most importantly, their blockchain addresses. Search for the address of the mentor named in the message.
+            The Message is: ${state.message}.
+            The Knowledge is: ${state.knowledge}.
             Only respond with the address, do not include anything else.
         `;
 
-        const addresses = await generateText({
+        const owner = await generateText({
             runtime: runtime,
-            context,
-            modelClass: ModelClass.SMALL,
+            context: context,
+            modelClass: ModelClass.MEDIUM,
             stop: ["\n"],
         });
 
         const data = await chainClient.readContract({
             address: TOKEN_ADDRESS,
             abi: ABI,
-            functionName: "balanceOf",
-            args: [addresses as Address],
+            functionName: "exposedBalance",
+            args: [owner as Address],
         });
 
         callback({
-            text: `Your current token balance is ${data.toString()} tokens for address ${addresses}`,
+            text: `His address is ${owner} and the exposed balance is ${data.toString()} tokens`,
         });
     },
     examples: [
@@ -90,13 +81,13 @@ export const balanceOfAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Check the balance of {{address}} on Sepolia network",
+                    text: "What is the balance of mentor Emma Wilson's",
                 },
             },
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "I will check the token balance for that address",
+                    text: "Let me check",
                     action: "BALANCE_OF",
                 },
             },

@@ -1,5 +1,5 @@
 export const TOKEN_ADDRESS =
-    "0x7d103E4c0F86FF24eBB166665710244edd7e3F1c" as const;
+    "0x142114D1a66AeA7857144e11002Ca05B98704e0d" as const;
 
 export const ABI = [
     {
